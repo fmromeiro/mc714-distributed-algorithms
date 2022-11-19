@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  p1:
+    build: .
+    ports:
+      - "80:81"
+  p2:
+    build: .
+    ports:
+      - "80:82"
+  p3:
+    build: .
+    ports:
+      - "80:83"
+  p4:
+    build: .
+    ports:
+      - "80:84"
