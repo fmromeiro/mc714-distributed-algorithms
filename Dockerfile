@@ -1,5 +1,5 @@
 FROM python:3.10-slim-bullseye
-ADD ./foobar /code
+ADD . /code
 WORKDIR /code
-RUN pip install -r requirements.txt
+# RUN pip install -r requirements.txt
 CMD ["python", "app.py"]

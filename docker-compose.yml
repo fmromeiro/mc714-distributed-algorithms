@@ -3,16 +3,28 @@ services:
   p1:
     build: .
     ports:
-      - "80:81"
+      - "8081:8080"
+    privileged: true
+    environment:
+      - PROCESS_NUM=1
   p2:
     build: .
     ports:
-      - "80:82"
+      - "8082:8080"
+    privileged: true
+    environment:
+      - PROCESS_NUM=2
   p3:
     build: .
     ports:
-      - "80:83"
+      - "8083:8080"
+    privileged: true
+    environment:
+      - PROCESS_NUM=3
   p4:
     build: .
     ports:
-      - "80:84"
+      - "8084:8080"
+    privileged: true
+    environment:
+      - PROCESS_NUM=4
