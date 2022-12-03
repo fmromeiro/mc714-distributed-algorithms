@@ -6,7 +6,7 @@ Para montar um ambiente de sistemas distribuídos, optamos por usar imagens Dock
 
 ## Relógio Lógico
 
-Para implementar o relógio lógico, criamos uma aplicação que sobe um servidor RPC que responde um número aleatório. Para fazer o relógio lógico, encapsulamos as chamadas do RPC, tanto de solicitação quanto de resposta, com chamadas ao relógio lógico.
+Para testar o relógio lógico, criamos uma aplicação que sobe um servidor RPC que responde um número aleatório. Para implementar o relógio lógico, encapsulamos as chamadas do RPC, tanto de solicitação quanto de resposta, com chamadas ao relógio lógico.
 
 ### Implementação
 
@@ -22,7 +22,7 @@ Visando o compartilhamento de relógio entre cliente e servidor RPC, fizemos as 
 
 #### Relógio Lógico
 
-Para implementar o relógio lógico, criamos uma classe Python que mantém o estado do relógio.
+Para implementar o relógio lógico, criamos uma classe Python que mantém o estado do relógio. Essa classe implementa um relógio lógico de Lamport simples, ou seja, não vetorial.
 
 Pensando no caso de eventos que não envolvem a comunicação entre processos, criamos um método `event` que simplesmente atualiza o relógio.
 
@@ -43,3 +43,27 @@ Para testar o funcionamento do relógio lógico, fizemos o cliente esperar um te
 O comportamento aleatório do cliente viabilizou a criação de vários casos, permitindo averiguar o funcionamento do relógio em cada um deles.
 
 Para executar as instâncias de teste com os logs, basta rodar `docker compose up --build`.
+
+## Eleição de Líder
+
+### Implementação
+
+Para o sistema de eleição de líder, implementamos o algoritmo do valentão usando uma classe `Leader` que armazena o estado necessário para gerenciar a eleição de líder, mantendo informações como uma lista de vizinhos, o id da instância atual e o id do leader atual. Essa classe também expõe interfaces que permitem iniciar uma eleição e sincronizar o líder com as demais instâncias. Essa implementação se comunica entre instâncias usando RPC com suporte da biblioteca `xmlrpc`, a mesma usado no relógio lógico.
+
+Na inicialização de uma instância de `Leader`, recebemos o id do processo atual, uma lista de vizinhos e uma função que mapeia um id para uma instância remota de `Leader`. Também inicializamos o líder para nulo, pois ainda não houve nenhuma eleição, e a variável `running_election` para False, pois nenhuma eleição está rodando no momento. Quando um processo precisa consultar o líder atual, ele pode consultar essa propriedade diretamente.
+
+O principal método da classe `Leader` é `start_election`. Ele é encapsulado por checagens a variável `running_election`, pois esse método pode ser demorado e não há necessidade de duas instâncias desse método rodarem simultaneamente. Esse método solicita a todos os vizinho que iniciem a eleição chamando `receive_election` percorrendo a lista de vizinhos do maior para o menor até alcançar o id atual. Ele para a procura assim que um vizinho responder que fará a eleição, pois todos os vizinhos que seriam questionados depois teriam id menor. Se não houverem vizinhos candidatos ou todos os vizinhos esiverem indisponíveis, a instância se declara líder e anuncia o resultado da eleição usando `disclose_result`.
+
+O método `disclose_result` percorre a lista de vizinhos chamando `receive_result`, que simplesmente atualiza o líder na instância atual.
+
+#### Dificuldades
+
+Muitas das dificuldades da solução, como a comunicação entre as instâncias, já haviam sido resolvidas durante a implementação do relógio lógico, então a implementação do algoritmo de eleição de líder foi muito mais fácil. O algoritmo em si era simples o suficiente, então também não tivemos complicações, mesmo com a lógica de sincronização entre instâncias.
+
+Ainda assim, tivemos um problema com a biblioteca `xmlrpc` em que ela lançava erros que não afetavam o funcionamento do algoritmo, mas ainda assim aconteciam. Acontece que, por padrão, essa biblioteca espera que as chamadas RPC tenham retorno, porém alguns métodos eram usados somente para sincronizar as instâncias, sem nenhum retorno para a chamada RPC, o que lançava a exceção. Corrigimos esse problema colocando um retorno `True` nos nossos métodos, mas poderíamos passar a opção `allow_none=True` para o servidor RPC para que o retorno nulo fosse aceito.
+
+Também tivemos um problema em que o líder precisa de uma função de mapeamento de id para líder RPC, porém durante a inicialização do líder os demais servidores RPC ainda não subiram, então iniciar um cliente RPC nesse momento para criar a função de mapeamento lançava um erro. Optamos por inicializar esse parâmetro como nulo e, depois da criação dos servidores, criar os clientes RPC e criar a função de mapeamento e somente aí definí-la na classe de eleição de líder.
+
+### Testes
+
+Para testar essa implementação, fizemos uma simples implementação que realiza um health check nas demais instâncias de tempos e tempos e, se necessário, vota no novo líder.
