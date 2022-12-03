@@ -29,29 +29,26 @@ class Leader:
             try:
                 self.leader_mapper(neighbor).receive_result(self.leader)
             except Exception as e:
-                logging.debug(self.leader_mapper)
-                logging.debug(f"{self.leader=}")
                 logging.debug(e)
                 pass
 
     def start_election(self):
         if self.running_election:
             return True
-        logging.debug("Iniciando eleição")
+        logging.info("Iniciando eleição")
         self.running_election = True
         possible_leaders = filter(lambda nbr: nbr > self.id, self.neighbors)
         if possible_leaders:
             for pos_ldr in sorted(possible_leaders, reverse=True):
                 try:
-                    logging.debug(f"Perguntando se {pos_ldr} é o novo líder")
+                    logging.info(f"Perguntando se {pos_ldr} é o novo líder")
                     self.leader_mapper(pos_ldr).receive_election()
                     self.running_election = False
                     return True
                 except Exception as e:
-                    logging.debug(pos_ldr)
                     logging.debug(e)
                     continue
-        logging.debug("Sou o novo leader")
+        logging.info("Sou o novo leader")
         self.leader = self.id
         self._disclose_result()
         self.running_election = False
