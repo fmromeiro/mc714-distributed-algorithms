@@ -66,4 +66,8 @@ Também tivemos um problema em que o líder precisa de uma função de mapeament
 
 ### Testes
 
-Para testar essa implementação, fizemos uma simples implementação que realiza um health check nas demais instâncias de tempos e tempos e, se necessário, vota no novo líder.
+Para testar essa implementação, fizemos um programa simples que realiza um health check nas demais instâncias de tempos e tempos e, se necessário, vota no novo líder. A partir das mensagens de log conseguimos observar o correto funcionamento da eleição de líder:
+
+- quando o líder atual morre, alguma das instâncias inicia a eleição e todas convergem para o mesmo resultado;
+- quando ocorrem repetidas eleições, a queda do líder é detectada e a eleição é sempre chamada;
+- mesmo que outros possíveis líderes tenham caído, o líder correto é sempre escolhido.
