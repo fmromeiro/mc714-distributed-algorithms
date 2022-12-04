@@ -42,7 +42,9 @@ def run():
     clock = Clock(process, 2)
     event = threading.Event()
     logging.basicConfig(level=logging.DEBUG)
+
     thread = threading.Thread(target=serve, args=(clock,), daemon=True)
     thread.start()
+    
     event.wait(3)
     client(clock, process, event)

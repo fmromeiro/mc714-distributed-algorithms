@@ -4,7 +4,7 @@
 
 Para montar um ambiente de sistemas distribuídos, optamos por usar imagens Docker. Para isso, criamos um Dockerfile que usa uma imagem Docker com Python 3.10 como base, copia os arquivos da pasta para a imagem Docker e executa o arquivo app.py. Então, montamos um arquivo docker-compose que sobe 4 cópias dessa imagem, possibilitando um sistema distribuído com 4 instâncias.
 
-Para rodar os testes, primeiro execute `docker compose build` para montar as imagens dos contâineres de teste. Depois, basta rodar `docker compose up -e DS_TEST=<TESTE>` para rodar o teste de um dos algoritmos, onde `<TESTE>` pode ser `CLOCK`, `LEADER` ou `MUTEX`.
+Para rodar os testes, primeiro execute `docker compose build` para montar as imagens dos containers de teste. Depois, basta rodar `docker compose up -e DS_TEST=<TESTE>` para rodar o teste de um dos algoritmos, onde `<TESTE>` pode ser `CLOCK`, `LEADER` ou `MUTEX`.
 
 ## Relógio Lógico
 

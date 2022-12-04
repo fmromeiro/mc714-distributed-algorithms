@@ -22,13 +22,13 @@ def callback(mutexClient: MutualExclusionClient, event: threading.Event):
 
 def serve(leader: Leader, mutexLeader: MutualExclusionLeader, mutexClient: MutualExclusionClient) -> None:
     server = SimpleXMLRPCServer(("0.0.0.0", 8080))
+
     server.register_instance(leader)
-    # server.register_instance(mutexLeader)
+
     server.register_function(mutexLeader.receive_request, "receive_request")
     server.register_function(mutexLeader.release_mutex, "release_mutex")
-    # server.register_instance(mutexClient)
     server.register_function(mutexClient.allow, "allow")
-    # server.register_function(mutexClient.request, "request")
+    
     server.serve_forever()
 
 
