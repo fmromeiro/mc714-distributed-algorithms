@@ -14,7 +14,7 @@ MAX_WAIT = 10
 REQUEST_CHANCE = 0.4
 
 
-def callback(mutexLeader: MutualExclusionLeader, event: threading.Event):
+def callback(mutexClient: MutualExclusionClient, event: threading.Event):
     logging.info("Consegui o mutex hehe (≖⌣≖)")
     event.wait(random.randint(MIN_WAIT, MAX_WAIT))
     logging.info("Vou liberar o mutex")
@@ -32,16 +32,17 @@ def serve(leader: Leader, mutexLeader: MutualExclusionLeader, mutexClient: Mutua
     server.serve_forever()
 
 
-def client(leader: Leader, mutexLeader: MutualExclusionLeader, mutexClient: MutualExclusionClient, id: int, event: threading.Event()):
+def client(leader: Leader, mutexClient: MutualExclusionClient, process: int, event: threading.Event(), clients: {int, ServerProxy}):
     event.wait(2)
     leader.start_election()
-    event.wait(10)
+    event.wait(3)
+    mutexClient.leader = clients[leader.leader]
     while True:
         event.wait(random.randint(MIN_WAIT, MAX_WAIT))
-        if id != leader.leader:
+        if process != leader.leader:
             roll = random.random()
             if roll < REQUEST_CHANCE:
-                mutexClient.request(lambda: callback(event))
+                mutexClient.request(lambda: callback(mutexClient, event))
 
 
 
@@ -62,6 +63,5 @@ def run():
     clients = {i: ServerProxy(f"http://p{i}:8080") for i in neighbors}
     leader.leader_mapper = lambda i: clients.get(i)
     mutexLeader.clients = lambda i: clients.get(i)
-    mutexClient.leader = mutexLeader
 
-    client(leader, mutexLeader, mutexClient, process, event)
+    client(leader, mutexClient, process, event, clients)
