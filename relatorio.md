@@ -4,6 +4,8 @@
 
 Para montar um ambiente de sistemas distribuídos, optamos por usar imagens Docker. Para isso, criamos um Dockerfile que usa uma imagem Docker com Python 3.10 como base, copia os arquivos da pasta para a imagem Docker e executa o arquivo app.py. Então, montamos um arquivo docker-compose que sobe 4 cópias dessa imagem, possibilitando um sistema distribuído com 4 instâncias.
 
+Para rodar os testes, primeiro execute `docker compose build` para montar as imagens dos contâineres de teste. Depois, basta rodar `docker compose up -e DS_TEST=<TESTE>` para rodar o teste de um dos algoritmos, onde `<TESTE>` pode ser `CLOCK`, `LEADER` ou `MUTEX`.
+
 ## Relógio Lógico
 
 Para testar o relógio lógico, criamos uma aplicação que sobe um servidor RPC que responde um número aleatório. Para implementar o relógio lógico, encapsulamos as chamadas do RPC, tanto de solicitação quanto de resposta, com chamadas ao relógio lógico.
@@ -71,3 +73,32 @@ Para testar essa implementação, fizemos um programa simples que realiza um hea
 - quando o líder atual morre, alguma das instâncias inicia a eleição e todas convergem para o mesmo resultado;
 - quando ocorrem repetidas eleições, a queda do líder é detectada e a eleição é sempre chamada;
 - mesmo que outros possíveis líderes tenham caído, o líder correto é sempre escolhido.
+
+Podemos simular a indiponibilidade do líder usando um `docker-compose kill <process-hash>`. Podemos descobrir os hashs dos processos rodando `docker ps`.
+
+## Exclusão mútua
+
+### Implementação
+
+Implementamos a exclusão mútua usando o algoritmo centralizado. Para escolher o coordenador do algoritmo, usamos a eleição de líder implementada anteriormente. Já para coordenar o próprio algoritmo implementamos duas classes, `MutualExclusionLeader` e `MutualExclusionClient`. que mantém o estado necessário para garantir a exclusão mútua. A comunicação entre as instâncias foi implementada usando a biblioteca `xmlrpc`.
+
+A classe `MutualExclusionLeader` mantém uma fila de instâncias esperando a liberação de recursos, um boolean indicando a disponibilidade do recurso, um semáforo para controlar o acesso a fila e uma função que mapeia um id de instância para o cliente RPC da instância. Essa classe possui dois métodos principais, `receive_request` e `release_mutex`. O primeiro recebe um pedido de acesso ao recurso e, se estiver disponível, libera o acesso, senão, enfileira o processo para ser liberado futuramente. O outro método, `release_mutex`, recebe uma notificação de que o atual uso do recurso foi encerrado e, caso haja algum processo na fila, o recursos já é imediatamente repassado para este.
+
+A classe `MutualExclusionClient` libera o recurso para um uso específico, ou seja, é possível que uma mesma instância solicite o recurso várias vezes antes que o recurso seja liberado uma única vez. Para isso, ela mantém uma lista de callbacks, para cada vez que o recurso foi liberado, um ponteiro para o cliente RPC do `MutualExclusionLeader`, o id do processo atual e um semáforo para evitar várias comunicações com o líder ao mesmo tempo. A classe expõe três métodos: `request`, `allow`, `release`. O primeiro recebe umm callback e solicita o recurso ao líder e, se esse estiver livre, executa o callback imediatamente, caso contrário, enfileira o callback para ser executado quando o recurso for liberado. O método `allow` é usado pelo líder para liberar o recurso tardiamente, chamando o primeiro callback da lista do cliente. Já o método `release` é chamado ao final do callback para informar o líder do fim do uso do recurso e liberá-lo.
+
+### Dificuldades
+
+Tivemos um problema durante a execução do cliente pois já que ele havia sido desenhado para que cada acesso ao recurso cumprisse um objetivo específico, poderia ocorrer mais de uma comunicação com o líder ao mesmo tempo, o que causava uma exceção na biblioteca `xmlrpc`. Para lidar com esse problema, envolvemos as chamadas ao líder em um semáforo, evitando comunicações paralelas.
+
+Isso porém trouxe outros problemas. Como o método `allow` do cliente chama um callback possivelmente lento, liberar o mutex causava um _deadlock_. Para resolver esse problema, fizemos `allow` iniciar o callback em uma thread própria e retornar mais cedo, evitando _deadlocks_ na liberação do mutex.
+
+### Testes
+
+Para testar a exclusão mútua, fizemos uma aplicação que simplesmente solicita o mutex de tempos em tempos. Ao obtê-lo, simplesmente o segura por uma porção de tempo aleatória e depois o libera.
+
+Devido a aleatoriedade dos testes, conseguimos observar alguns casos que comprovam o funcionamento do algoritmo:
+
+- quando o mutex está disponível, ele é entregue automaticamente a quem o soliciar;
+- quando o mutex está bloqueado, ele não é entregue e a requisição é enfileirada;
+- quando o mutex é liberado e a fila não está vazia, o mutex é entregue para o próximo item da fila;
+- quando o mutex é liberado e a fila está vazia, o mutex fica livre e é entregue imediatamente para a próxima requisição.
