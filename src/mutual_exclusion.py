@@ -7,7 +7,7 @@ class MutualExclusionLeader:
     queue: [int]
     in_use: bool
     _lock: threading.Lock
-    clients: ["MutualExclusionClient"]
+    clients: Callable[[int], "MutualExclusionClient"]
 
     def __init__(self):
         self.queue = []
@@ -21,7 +21,7 @@ class MutualExclusionLeader:
                 logging.info(f"Mutex em uso, adicionando na fila {self.queue}")
                 self.queue.append(process)
                 return False
-            logging.info("Fila vazia, liberando mutex")
+            logging.info("Fila vazia, entregando mutex imediatamente")
             self.in_use = True
             return True
 
@@ -41,7 +41,7 @@ class MutualExclusionLeader:
 
 
 class MutualExclusionClient:
-    callback: Callable
+    callbacks: [Callable]
     leader: MutualExclusionLeader
     process: int
     _lock: threading.Lock
@@ -49,19 +49,21 @@ class MutualExclusionClient:
     def __init__(self, process: int):
         self.process = process
         self._lock = threading.Lock()
+        self.callbacks = []
 
     def request(self, callback: Callable) -> bool:
         logging.info("Vou solicitar o mutex")
-        self.callback = callback
         with self._lock:
             result = self.leader.receive_request(self.process)
         if result:
             logging.info("Consegui o mutex na hora")
             callback()
+        else:
+            self.callbacks.append(callback)
 
     def allow(self):
         logging.info("Consegui o mutex depois")
-        thread = threading.Thread(target=self.callback)
+        thread = threading.Thread(target=self.callbacks.pop(0))
         thread.start()
         return True
 
