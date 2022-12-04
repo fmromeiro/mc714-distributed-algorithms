@@ -8,8 +8,8 @@ from xmlrpc.server import SimpleXMLRPCServer
 from src.logical_clock import Clock
 
 NUM_PROCESSES = 4
-MIN_WAIT = 20
-MAX_WAIT = 60
+MIN_WAIT = 5
+MAX_WAIT = 10
 
 
 def respond(params: dict) -> dict:
