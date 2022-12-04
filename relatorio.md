@@ -1,4 +1,7 @@
-# Relatório
+# Relatório trabalho 2 MC714 - Sistemas distribuídos
+
+> Felipe Martins Romeiro - 215720  
+> Vinícius Waki Teles - 257390
 
 ## Montagem de ambiente
 
